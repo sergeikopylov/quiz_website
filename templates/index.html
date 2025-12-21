@@ -1,10 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <title>Real-Time Button</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+        #feed { margin-top: 20px; color: green; font-weight: bold; }
+        input, button { padding: 10px; font-size: 16px; }
+    </style>
 </head>
 <body>
-$END$
+
+    <h1>The Real-Time Button</h1>
+
+    <input type="text" id="nameInput" placeholder="Enter your name">
+    <button onclick="sendClick()">Click Me!</button>
+
+    <div id="feed">Waiting for clicks...</div>
+
+    <script type="text/javascript">
+        // Connect to the WebSocket server
+        var socket = io();
+
+        // Function called when you press the button
+        function sendClick() {
+            var name = document.getElementById('nameInput').value;
+            if(name) {
+                // Emit event to server
+                socket.emit('user_clicked', {name: name});
+            } else {
+                alert("Please enter a name!");
+            }
+        }
+
+        // Listen for 'update_feed' event from server
+        socket.on('update_feed', function(data) {
+            // Update the HTML with the new message
+            var feedDiv = document.getElementById('feed');
+
+            // Create a new line for the log (or just replace the text)
+            var newItem = document.createElement("div");
+            newItem.innerText = data.message;
+
+            // Add to the top of the list
+            feedDiv.insertBefore(newItem, feedDiv.firstChild);
+        });
+    </script>
 </body>
 </html>
