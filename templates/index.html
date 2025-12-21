@@ -1,48 +1,169 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Real-Time Button</title>
+    <title>The Button</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-        #feed { margin-top: 20px; color: green; font-weight: bold; }
-        input, button { padding: 10px; font-size: 16px; }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- SCREEN 1: LOGIN --- */
+        #login-screen {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input {
+            padding: 15px;
+            font-size: 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .enter-btn {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        /* --- SCREEN 2: MAIN AREA --- */
+        #main-screen {
+            display: none; /* Hidden by default */
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* The Big Button style (for normal users) */
+        .btn-giant {
+            width: 80%;
+            height: 60vh;
+            background-color: #ff4757;
+            color: white;
+            font-size: 50px;
+            font-weight: bold;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 10px 0 #c0392b;
+            transition: all 0.1s;
+        }
+        .btn-giant:active {
+            box-shadow: 0 5px 0 #c0392b;
+            transform: translateY(5px);
+        }
+
+        /* The Small Button style (for Sergei) */
+        .btn-small {
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #2ed573;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        /* The Log Area (Hidden for normal users) */
+        #log-container {
+            display: none; /* Hidden by default */
+            width: 80%;
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            background: white;
+            padding: 10px;
+            text-align: left;
+            margin-top: 20px;
+        }
+        .log-item {
+            border-bottom: 1px solid #eee;
+            padding: 5px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>The Real-Time Button</h1>
+    <div id="login-screen">
+        <h1>Identify Yourself</h1>
+        <input type="text" id="username" placeholder="Your Name">
+        <button class="enter-btn" onclick="enterApp()">Enter</button>
+    </div>
 
-    <input type="text" id="nameInput" placeholder="Enter your name">
-    <button onclick="sendClick()">Click Me!</button>
+    <div id="main-screen">
+        <button id="the-button" onclick="sendClick()">CLICK ME</button>
 
-    <div id="feed">Waiting for clicks...</div>
+        <div id="log-container">
+            <div style="font-weight:bold; margin-bottom:10px;">Real-Time Feed:</div>
+            <div id="feed"></div>
+        </div>
+    </div>
 
     <script type="text/javascript">
-        // Connect to the WebSocket server
         var socket = io();
+        var currentUser = "";
 
-        // Function called when you press the button
-        function sendClick() {
-            var name = document.getElementById('nameInput').value;
-            if(name) {
-                // Emit event to server
-                socket.emit('user_clicked', {name: name});
+        function enterApp() {
+            var input = document.getElementById('username');
+            var name = input.value.trim();
+
+            if (!name) {
+                alert("Please enter a name.");
+                return;
+            }
+
+            currentUser = name;
+
+            // 1. Hide Login Screen, Show Main Screen
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-screen').style.display = 'flex';
+
+            // 2. CHECK IF USER IS SERGEI
+            var btn = document.getElementById('the-button');
+            var log = document.getElementById('log-container');
+
+            if (currentUser === "Sergei") {
+                // SERGEI MODE: Small button, visible log
+                btn.className = "btn-small";
+                log.style.display = "block";
             } else {
-                alert("Please enter a name!");
+                // NORMAL MODE: Giant button, hidden log
+                btn.className = "btn-giant";
+                log.style.display = "none";
             }
         }
 
-        // Listen for 'update_feed' event from server
+        function sendClick() {
+            socket.emit('user_clicked', {name: currentUser});
+        }
+
         socket.on('update_feed', function(data) {
-            // Update the HTML with the new message
+            // Only actually add text to the log if we are Sergei
+            // (Or we can add it anyway, it's just hidden by CSS for others)
             var feedDiv = document.getElementById('feed');
-
-            // Create a new line for the log (or just replace the text)
             var newItem = document.createElement("div");
-            newItem.innerText = data.message;
+            newItem.className = "log-item";
 
-            // Add to the top of the list
+            // Get current time
+            var time = new Date().toLocaleTimeString();
+            newItem.innerText = "[" + time + "] " + data.message;
+
             feedDiv.insertBefore(newItem, feedDiv.firstChild);
         });
     </script>
