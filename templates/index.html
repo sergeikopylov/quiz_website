@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>The Button</title>
+    <title>Buzzer Game</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body {
             font-family: 'Courier New', Courier, monospace;
             text-align: center;
-            background-color: #f0f0f0;
+            background-color: #2c3e50; /* Dark background */
+            color: white;
             margin: 0;
             padding: 0;
             height: 100vh;
@@ -17,162 +18,138 @@
             align-items: center;
         }
 
-        /* --- SCREEN 1: LOGIN --- */
-        #login-screen {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        input {
-            padding: 15px;
-            font-size: 20px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        .enter-btn {
-            padding: 10px 20px;
-            font-size: 18px;
-            cursor: pointer;
-            background-color: #333;
-            color: white;
-            border: none;
-            border-radius: 5px;
+        /* LOGIN SCREEN */
+        #login-screen { display: flex; flex-direction: column; gap: 15px; }
+        input { padding: 15px; font-size: 20px; border-radius: 5px; border: none; }
+        .enter-btn { padding: 10px; font-size: 18px; cursor: pointer; background: #27ae60; color: white; border: none; }
+
+        /* MAIN SCREEN */
+        #main-screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+
+        #status-text {
+            font-size: 30px;
+            margin-bottom: 20px;
+            height: 40px;
         }
 
-        /* --- SCREEN 2: MAIN AREA --- */
-        #main-screen {
-            display: none; /* Hidden by default */
-            width: 100%;
-            height: 100%;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* The Big Button style (for normal users) */
-        .btn-giant {
+        /* THE BUTTON STATES */
+        #the-button {
             width: 80%;
-            height: 60vh;
-            background-color: #ff4757;
-            color: white;
-            font-size: 50px;
+            height: 50vh;
+            font-size: 40px;
             font-weight: bold;
             border: none;
             border-radius: 20px;
             cursor: pointer;
-            box-shadow: 0 10px 0 #c0392b;
-            transition: all 0.1s;
-        }
-        .btn-giant:active {
-            box-shadow: 0 5px 0 #c0392b;
-            transform: translateY(5px);
-        }
-
-        /* The Small Button style (for Sergei) */
-        .btn-small {
-            padding: 15px 30px;
-            font-size: 20px;
-            background-color: #2ed573;
+            transition: all 0.2s;
             color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 20px;
+            box-shadow: 0 10px 0 rgba(0,0,0,0.2);
         }
 
-        /* The Log Area (Hidden for normal users) */
-        #log-container {
-            display: none; /* Hidden by default */
-            width: 80%;
-            height: 300px;
-            overflow-y: scroll;
-            border: 1px solid #ccc;
-            background: white;
-            padding: 10px;
-            text-align: left;
-            margin-top: 20px;
-        }
-        .log-item {
-            border-bottom: 1px solid #eee;
-            padding: 5px;
+        /* 1. Neutral State (Ready) */
+        .btn-ready { background-color: #27ae60; } /* Green */
+        .btn-ready:active { transform: translateY(5px); box-shadow: 0 5px 0 rgba(0,0,0,0.2); }
+
+        /* 2. Locked State (Someone else won) */
+        .btn-locked { background-color: #7f8c8d; cursor: not-allowed; } /* Grey */
+
+        /* 3. Winner State (You won!) */
+        .btn-winner { background-color: #f1c40f; color: black; } /* Gold */
+
+        /* SERGEI RESET BUTTON */
+        .btn-sergei {
+            width: auto !important;
+            height: auto !important;
+            padding: 20px 40px;
+            background-color: #e74c3c; /* Red */
         }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <h1>Identify Yourself</h1>
-        <input type="text" id="username" placeholder="Your Name">
-        <button class="enter-btn" onclick="enterApp()">Enter</button>
+        <h1>Buzzer Login</h1>
+        <input type="text" id="username" placeholder="Enter Name">
+        <button class="enter-btn" onclick="enterApp()">Join Game</button>
     </div>
 
     <div id="main-screen">
-        <button id="the-button" onclick="sendClick()">CLICK ME</button>
-
-        <div id="log-container">
-            <div style="font-weight:bold; margin-bottom:10px;">Real-Time Feed:</div>
-            <div id="feed"></div>
-        </div>
+        <div id="status-text">WAITING FOR CLICKS...</div>
+        <button id="the-button" class="btn-ready" onclick="sendClick()">CLICK!</button>
     </div>
 
-    <script type="text/javascript">
+    <script>
         var socket = io();
         var currentUser = "";
+        // Sound for when someone buzzes in
+        var buzzSound = new Audio('https://cdn.freesound.org/previews/366/366104_6687700-lq.mp3');
 
         function enterApp() {
-            var input = document.getElementById('username');
-            var name = input.value.trim();
-
-            if (!name) {
-                alert("Please enter a name.");
-                return;
-            }
-
+            var name = document.getElementById('username').value.trim();
+            if (!name) return;
             currentUser = name;
 
-            // 1. Hide Login Screen, Show Main Screen
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('main-screen').style.display = 'flex';
 
-            // 2. CHECK IF USER IS SERGEI
-            var btn = document.getElementById('the-button');
-            var log = document.getElementById('log-container');
-
+            // Special UI for Sergei
             if (currentUser === "Sergei") {
-                // SERGEI MODE: Small button, visible log
-                btn.className = "btn-small";
-                log.style.display = "block";
-            } else {
-                // NORMAL MODE: Giant button, hidden log
-                btn.className = "btn-giant";
-                log.style.display = "none";
+                var btn = document.getElementById('the-button');
+                btn.innerText = "RESET CYCLE";
+                btn.className = "btn-sergei";
             }
         }
 
         function sendClick() {
+            // Send click to server
             socket.emit('user_clicked', {name: currentUser});
         }
 
+        // EVENT: SOMEONE LOCKED THE BUTTON
+        socket.on('game_locked', function(data) {
+            var btn = document.getElementById('the-button');
+            var status = document.getElementById('status-text');
 
-        var notificationSound = new Audio('https://cdn.freesound.org/previews/806/806093_13157686-lq.mp3');
+            // Play sound
+            buzzSound.currentTime = 0;
+            buzzSound.play();
 
-        socket.on('update_feed', function(data) {
-            // 1. Play the sound for everyone who receives the update
-            // (The browser allows this because the user already clicked 'Enter' to log in)
-            notificationSound.currentTime = 0; // Reset sound to start
-            notificationSound.play().catch(function(error) {
-                console.log("Browser blocked audio: " + error);
-            });
+            if (currentUser === "Sergei") {
+                // Sergei sees who won, but his button stays active (to reset)
+                status.innerText = "LOCKED BY: " + data.winner;
+                // We do NOT disable Sergei's button
+            } else {
+                if (data.winner === currentUser) {
+                    // I won!
+                    btn.className = "btn-winner";
+                    btn.innerText = "YOU BUZZED IN!";
+                    status.innerText = "YOU WON!";
+                } else {
+                    // Someone else won
+                    btn.className = "btn-locked";
+                    btn.innerText = "LOCKED";
+                    btn.disabled = true; // Block clicks
+                    status.innerText = "Winner: " + data.winner;
+                }
+            }
+        });
 
-            // 2. Update the visual log (Your existing code)
-            var feedDiv = document.getElementById('feed');
-            var newItem = document.createElement("div");
-            newItem.className = "log-item";
+        // EVENT: SERGEI RESET THE GAME
+        socket.on('game_reset', function(data) {
+            var btn = document.getElementById('the-button');
+            var status = document.getElementById('status-text');
 
-            var time = new Date().toLocaleTimeString();
-            newItem.innerText = "[" + time + "] " + data.message;
+            status.innerText = "GO!";
 
-            feedDiv.insertBefore(newItem, feedDiv.firstChild);
+            if (currentUser === "Sergei") {
+                btn.innerText = "RESET CYCLE";
+                // Sergei's button is always red/active
+            } else {
+                // Reset normal users to Green/Ready
+                btn.className = "btn-ready";
+                btn.innerText = "CLICK!";
+                btn.disabled = false;
+            }
         });
     </script>
 </body>
