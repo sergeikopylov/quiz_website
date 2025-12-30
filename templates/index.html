@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Buzzer Game</title>
+    <title>Новогодняя Викторина</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body {
@@ -90,14 +90,14 @@
 <body>
 
     <div id="login-screen">
-        <h1>Buzzer Login</h1>
-        <input type="text" id="username" placeholder="Enter Name">
-        <button class="enter-btn" onclick="enterApp()">Join Game</button>
+        <h1>Добро пожаловать на новогоднюю викторину от Сережи и Зои</h1>
+        <input type="text" id="username" placeholder="Введите Имя">
+        <button class="enter-btn" onclick="enterApp()">Начать игру</button>
     </div>
 
     <div id="main-screen">
-        <div id="status-text">WAITING FOR CLICKS...</div>
-        <button id="the-button" class="btn-ready" onclick="sendClick()">CLICK!</button>
+        <div id="status-text"></div>
+        <button id="the-button" class="btn-ready" onclick="sendClick()">ОТВЕТИТЬ!</button>
     </div>
 
     <script>
@@ -136,13 +136,13 @@
             } else {
                 if (data.winner === currentUser) {
                     btn.className = "btn-winner";
-                    btn.innerText = "YOU BUZZED IN!";
-                    status.innerText = "YOU WON!";
+                    btn.innerText = "ТЫ ОТВЕЧАЕШЬ!";
+                    status.innerText = "";
                 } else {
                     btn.className = "btn-locked";
-                    btn.innerText = "LOCKED";
+                    btn.innerText = "ОТВЕЧАЕТ" + " " + data.winner;
                     btn.disabled = true;
-                    status.innerText = "Winner: " + data.winner;
+                    status.innerText = "";
                 }
             }
         });
@@ -151,13 +151,13 @@
             var btn = document.getElementById('the-button');
             var status = document.getElementById('status-text');
 
-            status.innerText = "GO!";
+            status.innerText = "";
 
             if (currentUser === "Sergei") {
                 btn.innerText = "RESET CYCLE";
             } else {
                 btn.className = "btn-ready";
-                btn.innerText = "CLICK!";
+                btn.innerText = "ОТВЕТИТЬ!";
                 btn.disabled = false;
             }
         });
